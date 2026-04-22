@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://qr-permanente.pages.dev/sitemap-index.xml

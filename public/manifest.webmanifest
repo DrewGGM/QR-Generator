@@ -1,0 +1,18 @@
+{
+  "name": "QR Permanente",
+  "short_name": "QR Permanente",
+  "description": "Generador de códigos QR permanentes, personalizables y artísticos. 100% gratis.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f8ff",
+  "theme_color": "#4f6df5",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

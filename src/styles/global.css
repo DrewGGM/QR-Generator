@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #d9e6ff;
+  --color-brand-500: #4f6df5;
+  --color-brand-600: #3b54e0;
+  --color-brand-700: #2f43b8;
+  --color-brand-900: #1a2570;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: linear-gradient(135deg, #f6f8ff 0%, #eef2ff 100%);
+  min-height: 100vh;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-medium transition-all duration-200 cursor-pointer select-none;
+}
+.btn-primary {
+  @apply bg-brand-600 text-white hover:bg-brand-700 active:scale-[0.98] shadow-md hover:shadow-lg;
+}
+.btn-secondary {
+  @apply bg-white text-brand-700 border border-brand-100 hover:border-brand-500 hover:bg-brand-50;
+}
+.btn-ghost {
+  @apply text-slate-600 hover:bg-slate-100;
+}
+
+.field {
+  @apply w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 transition-colors focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10;
+}
+
+.label {
+  @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600;
+}
+
+.card {
+  @apply rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-sm shadow-sm;
+}
+
+.template-card {
+  @apply flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-center transition-all duration-200 hover:border-brand-500 hover:shadow-md hover:-translate-y-0.5 cursor-pointer;
+}
+.template-card.active {
+  @apply border-brand-500 bg-brand-50 ring-2 ring-brand-500/20;
+}
+
+.swatch {
+  @apply h-9 w-9 rounded-lg border-2 border-white shadow ring-1 ring-slate-200 cursor-pointer transition-transform hover:scale-110;
+}
+.swatch.active {
+  @apply ring-2 ring-brand-500 ring-offset-2;
+}

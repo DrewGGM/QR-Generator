@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+.astro/
+
+# env
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / OS
+.DS_Store
+.vscode/
+.idea/
+Thumbs.db
+
+# claude code local settings
+.claude/
+
+# deploy platforms
+.vercel
+.cloudflare
+.wrangler/

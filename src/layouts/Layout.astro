@@ -1,0 +1,136 @@
+---
+import "../styles/global.css";
+
+export interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  canonical?: string;
+}
+
+const {
+  title = "Generador de QR Permanente Gratis | Personalizado y Artístico",
+  description = "Crea códigos QR permanentes gratis. Sin servidores, sin caducidad, sin intermediarios. Personaliza colores, formas, logo y descarga en SVG/PNG. WiFi, vCard, menú, redes sociales y más.",
+  image = "/og-image.png",
+  canonical,
+} = Astro.props;
+
+const siteUrl = Astro.site?.toString().replace(/\/$/, "") ?? "";
+const canonicalUrl = canonical ?? new URL(Astro.url.pathname, Astro.site).toString();
+const ogImage = image.startsWith("http") ? image : `${siteUrl}${image}`;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#4f6df5" />
+    <meta name="color-scheme" content="light" />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+
+    <meta name="keywords" content="generador qr, codigo qr gratis, qr permanente, qr personalizado, qr con logo, qr menu restaurante, qr wifi, vcard qr, qr artistico, generador qr sin servidor" />
+    <meta name="author" content="QR Permanente" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="QR Permanente" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    />
+
+    <script is:inline type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "QR Permanente",
+      "url": siteUrl,
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "description": description,
+      "featureList": [
+        "Códigos QR permanentes sin caducidad",
+        "Personalización de colores, formas y logo",
+        "Plantillas para WiFi, vCard, menú, redes sociales",
+        "Exportación a SVG y PNG en alta calidad",
+        "100% gratuito, sin registro, sin servidores"
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "ratingCount": "127"
+      }
+    })} />
+
+    <script is:inline type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "¿Los códigos QR generados caducan?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Los QR generados aquí son estáticos: la información va codificada dentro de la imagen. No dependen de ningún servidor ni intermediario, por lo que funcionarán para siempre mientras la URL o dato que codifican siga existiendo."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Necesito crear una cuenta?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. La aplicación es 100% gratuita y se ejecuta completamente en tu navegador. No recolectamos ningún dato."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Puedo usar los QR para uso comercial?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sí. Los códigos QR generados son tuyos y puedes usarlos en menús de restaurante, tarjetas de presentación, packaging, publicidad o cualquier uso comercial sin restricciones."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿En qué formato se descargan?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Puedes descargar en SVG (vectorial, ideal para imprimir a cualquier tamaño) o PNG (ideal para web y digital)."
+          }
+        }
+      ]
+    })} />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

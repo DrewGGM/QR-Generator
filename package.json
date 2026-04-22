@@ -1,0 +1,30 @@
+{
+  "name": "qr-permanente",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Generador de códigos QR permanentes, artísticos y personalizables. 100% estático, sin servidores ni intermediarios.",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.8",
+    "astro": "^5.1.5",
+    "qr-code-styling": "^1.9.2",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@astrojs/sitemap": "^3.2.1",
+    "@tailwindcss/vite": "^4.0.0",
+    "tailwindcss": "^4.0.0"
+  },
+  "optionalDependencies": {
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.0.0",
+    "lightningcss-linux-x64-gnu": "^1.30.0",
+    "@rollup/rollup-linux-x64-gnu": "^4.0.0",
+    "sharp": "^0.34.0"
+  }
+}
