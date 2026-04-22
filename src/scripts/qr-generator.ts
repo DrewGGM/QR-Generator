@@ -30,7 +30,7 @@ const state: State = {
   templateId: initialTemplate.id,
   data: { url: "https://qr-permanente.pages.dev" },
   style: { ...initialTemplate.preset },
-  size: 360,
+  size: 300,
   margin: 8,
   logo: null,
   logoSize: 0.32,
