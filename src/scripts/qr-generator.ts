@@ -5,8 +5,19 @@ import QRCodeStyling, {
   type CornerDotType,
   type ErrorCorrectionLevel,
   type FileExtension,
+  type ExtensionFunction,
 } from "qr-code-styling";
 import { templates, colorPalettes, type StylePreset } from "../data/templates";
+
+type FrameStyle = "none" | "simple" | "label" | "rounded" | "scan";
+
+interface FrameState {
+  style: FrameStyle;
+  text: string;
+  textColor: string;
+  bgColor: string;
+  borderColor: string;
+}
 
 interface State {
   templateId: string;
@@ -17,6 +28,7 @@ interface State {
   logo: string | null;
   logoSize: number;
   hideBackgroundDots: boolean;
+  frame: FrameState;
 }
 
 const root = document.getElementById("qr-app");
@@ -24,6 +36,8 @@ if (!root) throw new Error("#qr-app not found");
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector(sel) as T;
 const $$ = <T extends HTMLElement = HTMLElement>(sel: string) => Array.from(root.querySelectorAll(sel)) as T[];
+
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 const initialTemplate = templates[0];
 const state: State = {
@@ -35,6 +49,9 @@ const state: State = {
   logo: null,
   logoSize: 0.32,
   hideBackgroundDots: true,
+  frame: initialTemplate.framePreset
+    ? { ...initialTemplate.framePreset }
+    : { style: "none", text: "", textColor: "#ffffff", bgColor: "#1a2570", borderColor: "#1a2570" },
 };
 
 const qrContainer = $<HTMLDivElement>("#qr-preview");
@@ -84,11 +101,122 @@ function buildOptions(): Partial<Options> {
   };
 }
 
+const frameExtension: ExtensionFunction = (svg, options) => {
+  const frame = state.frame;
+  if (frame.style === "none" && !frame.text.trim()) return;
+
+  const w = (options.width as number) || state.size;
+  const h = (options.height as number) || state.size;
+  const text = frame.text.trim().toUpperCase();
+  const hasLabel = !!text && (frame.style === "label" || frame.style === "rounded" || frame.style === "scan");
+
+  const padding = frame.style === "simple" ? 10 : 14;
+  const labelHeight = hasLabel ? Math.round(w * 0.18) : 0;
+  const labelTop = frame.style === "scan";
+  const cornerRadius = frame.style === "rounded" ? Math.round(w * 0.08) : frame.style === "label" ? Math.round(w * 0.06) : frame.style === "simple" ? 8 : 4;
+  const borderWidth = frame.style === "simple" ? 4 : frame.style === "label" ? 8 : frame.style === "rounded" ? 5 : frame.style === "scan" ? 6 : 0;
+
+  const totalW = w + padding * 2;
+  const totalH = h + padding * 2 + labelHeight;
+
+  // Move existing QR contents into a translated <g>
+  const innerY = labelTop ? padding + labelHeight : padding;
+  const inner = document.createElementNS(SVG_NS, "g");
+  inner.setAttribute("transform", `translate(${padding}, ${innerY})`);
+  while (svg.firstChild) inner.appendChild(svg.firstChild);
+
+  // Resize SVG (CSS will scale it, internal resolution preserved)
+  svg.setAttribute("width", String(totalW));
+  svg.setAttribute("height", String(totalH));
+  svg.setAttribute("viewBox", `0 0 ${totalW} ${totalH}`);
+
+  // Outer background (matches QR background so the frame area looks unified)
+  const outerBg = document.createElementNS(SVG_NS, "rect");
+  outerBg.setAttribute("x", "0");
+  outerBg.setAttribute("y", "0");
+  outerBg.setAttribute("width", String(totalW));
+  outerBg.setAttribute("height", String(totalH));
+  outerBg.setAttribute("fill", state.style.backgroundColor);
+  outerBg.setAttribute("rx", String(cornerRadius));
+  svg.appendChild(outerBg);
+
+  svg.appendChild(inner);
+
+  // Label background (colored bar)
+  if (hasLabel) {
+    const labelY = labelTop ? 0 : h + padding * 2;
+    const labelBg = document.createElementNS(SVG_NS, "rect");
+    labelBg.setAttribute("x", "0");
+    labelBg.setAttribute("y", String(labelY));
+    labelBg.setAttribute("width", String(totalW));
+    labelBg.setAttribute("height", String(labelHeight));
+    labelBg.setAttribute("fill", frame.bgColor);
+    if (frame.style === "rounded") {
+      // Floating pill: smaller, centered
+      const pillW = Math.min(totalW * 0.7, w * 0.7);
+      const pillH = labelHeight * 0.75;
+      const pillX = (totalW - pillW) / 2;
+      const pillY = labelY + (labelHeight - pillH) / 2;
+      labelBg.setAttribute("x", String(pillX));
+      labelBg.setAttribute("y", String(pillY));
+      labelBg.setAttribute("width", String(pillW));
+      labelBg.setAttribute("height", String(pillH));
+      labelBg.setAttribute("rx", String(pillH / 2));
+    }
+    svg.appendChild(labelBg);
+
+    const text = document.createElementNS(SVG_NS, "text");
+    text.setAttribute("x", String(totalW / 2));
+    text.setAttribute("y", String(labelY + labelHeight / 2));
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "central");
+    text.setAttribute("fill", frame.textColor);
+    text.setAttribute("font-family", "Inter, system-ui, -apple-system, sans-serif");
+    text.setAttribute("font-size", String(Math.max(18, Math.round(w * 0.085))));
+    text.setAttribute("font-weight", "800");
+    text.setAttribute("letter-spacing", "2");
+    text.textContent = frame.text.trim().toUpperCase();
+    svg.appendChild(text);
+
+    // Decorative scan arrows for "scan" style
+    if (frame.style === "scan") {
+      const arrow = document.createElementNS(SVG_NS, "path");
+      const ax = totalW / 2;
+      const ay = labelHeight - 4;
+      arrow.setAttribute("d", `M ${ax - 8} ${ay - 8} L ${ax} ${ay} L ${ax + 8} ${ay - 8}`);
+      arrow.setAttribute("stroke", frame.textColor);
+      arrow.setAttribute("stroke-width", "3");
+      arrow.setAttribute("fill", "none");
+      arrow.setAttribute("stroke-linecap", "round");
+      arrow.setAttribute("stroke-linejoin", "round");
+      svg.appendChild(arrow);
+    }
+  }
+
+  // Outer border on top
+  if (borderWidth > 0) {
+    const border = document.createElementNS(SVG_NS, "rect");
+    const off = borderWidth / 2;
+    border.setAttribute("x", String(off));
+    border.setAttribute("y", String(off));
+    border.setAttribute("width", String(totalW - borderWidth));
+    border.setAttribute("height", String(totalH - borderWidth));
+    border.setAttribute("fill", "none");
+    border.setAttribute("stroke", frame.borderColor);
+    border.setAttribute("stroke-width", String(borderWidth));
+    border.setAttribute("rx", String(Math.max(0, cornerRadius - off)));
+    svg.appendChild(border);
+  }
+};
+
 const qrCode = new QRCodeStyling(buildOptions());
 qrCode.append(qrContainer);
+qrCode.applyExtension(frameExtension);
 
 function render() {
   qrCode.update(buildOptions());
+  // Re-apply extension after each update (update rebuilds the SVG)
+  qrCode.applyExtension(frameExtension);
 }
 
 // === FIELDS RENDERING ===
@@ -139,7 +267,11 @@ function selectTemplate(id: string, applyPreset = true) {
   });
   if (applyPreset) {
     state.style = { ...tpl.preset };
+    if (tpl.framePreset) {
+      state.frame = { ...tpl.framePreset };
+    }
     syncStyleControls();
+    syncFrameControls();
   }
   $$<HTMLButtonElement>("[data-template]").forEach((b) => {
     b.classList.toggle("active", b.dataset.template === id);
@@ -214,6 +346,46 @@ $("#use-gradient").addEventListener("change", () => {
       to: ($("#gradient-to") as HTMLInputElement).value,
       type: ($("#gradient-type") as HTMLSelectElement).value as "linear" | "radial",
     };
+    render();
+  });
+});
+
+// === FRAME CONTROLS ===
+function syncFrameControls() {
+  ($("#frame-style") as HTMLSelectElement).value = state.frame.style;
+  ($("#frame-text") as HTMLInputElement).value = state.frame.text;
+  ($("#frame-text-color") as HTMLInputElement).value = state.frame.textColor;
+  ($("#frame-bg-color") as HTMLInputElement).value = state.frame.bgColor;
+  ($("#frame-border-color") as HTMLInputElement).value = state.frame.borderColor;
+  toggleFrameUI();
+}
+
+function toggleFrameUI() {
+  const isNone = state.frame.style === "none";
+  $("#frame-options").classList.toggle("hidden", isNone);
+}
+
+const frameBindings: { sel: string; apply: (v: string) => void }[] = [
+  { sel: "#frame-style", apply: (v) => { state.frame.style = v as FrameStyle; toggleFrameUI(); } },
+  { sel: "#frame-text", apply: (v) => (state.frame.text = v) },
+  { sel: "#frame-text-color", apply: (v) => (state.frame.textColor = v) },
+  { sel: "#frame-bg-color", apply: (v) => (state.frame.bgColor = v) },
+  { sel: "#frame-border-color", apply: (v) => (state.frame.borderColor = v) },
+];
+frameBindings.forEach(({ sel, apply }) => {
+  $(sel).addEventListener("input", (e) => {
+    apply((e.target as HTMLInputElement).value);
+    render();
+  });
+});
+
+// Frame text suggestion chips
+$$<HTMLButtonElement>("[data-frame-suggest]").forEach((b) => {
+  b.addEventListener("click", () => {
+    const txt = b.dataset.frameSuggest!;
+    state.frame.text = txt;
+    if (state.frame.style === "none") state.frame.style = "label";
+    syncFrameControls();
     render();
   });
 });
@@ -304,6 +476,7 @@ $("#print-qr").addEventListener("click", () => window.print());
 // Init
 selectTemplate(state.templateId, false);
 syncStyleControls();
+syncFrameControls();
 $("#size-val").textContent = `${state.size}px`;
 $("#margin-val").textContent = `${state.margin}px`;
 $("#logo-size-val").textContent = `${Math.round(state.logoSize * 100)}%`;

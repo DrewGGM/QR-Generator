@@ -26,6 +26,14 @@ export interface StylePreset {
   errorCorrection: "L" | "M" | "Q" | "H";
 }
 
+export interface FramePreset {
+  style: "none" | "simple" | "label" | "rounded" | "scan";
+  text: string;
+  textColor: string;
+  bgColor: string;
+  borderColor: string;
+}
+
 export interface QRTemplate {
   id: string;
   name: string;
@@ -34,6 +42,7 @@ export interface QRTemplate {
   fields: TemplateField[];
   encode: (data: Record<string, string>) => string;
   preset: StylePreset;
+  framePreset?: FramePreset;
 }
 
 const defaultPreset: StylePreset = {
@@ -77,6 +86,7 @@ export const templates: QRTemplate[] = [
       backgroundColor: "#fff8ef",
       errorCorrection: "H",
     },
+    framePreset: { style: "label", text: "MENÚ", textColor: "#fff8ef", bgColor: "#5b3a1f", borderColor: "#5b3a1f" },
   },
   {
     id: "wifi",
@@ -117,6 +127,7 @@ export const templates: QRTemplate[] = [
       backgroundColor: "#ffffff",
       errorCorrection: "H",
     },
+    framePreset: { style: "label", text: "WIFI GRATIS", textColor: "#ffffff", bgColor: "#0369a1", borderColor: "#0369a1" },
   },
   {
     id: "vcard",
@@ -202,6 +213,7 @@ export const templates: QRTemplate[] = [
       backgroundColor: "#ffffff",
       errorCorrection: "H",
     },
+    framePreset: { style: "rounded", text: "SÍGUEME", textColor: "#ffffff", bgColor: "#7c3aed", borderColor: "#7c3aed" },
   },
   {
     id: "maps",
@@ -221,6 +233,7 @@ export const templates: QRTemplate[] = [
       backgroundColor: "#ffffff",
       errorCorrection: "H",
     },
+    framePreset: { style: "label", text: "CÓMO LLEGAR", textColor: "#ffffff", bgColor: "#dc2626", borderColor: "#dc2626" },
   },
   {
     id: "payment",
@@ -262,6 +275,7 @@ export const templates: QRTemplate[] = [
       backgroundColor: "#ffffff",
       errorCorrection: "H",
     },
+    framePreset: { style: "label", text: "PAGAR AQUÍ", textColor: "#ffffff", bgColor: "#047857", borderColor: "#047857" },
   },
   {
     id: "email",
