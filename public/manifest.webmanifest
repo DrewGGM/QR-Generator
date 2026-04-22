@@ -1,18 +1,31 @@
 {
-  "name": "QR Permanente",
+  "name": "QR Permanente — Crea tu código QR para siempre",
   "short_name": "QR Permanente",
-  "description": "Generador de códigos QR permanentes, personalizables y artísticos. 100% gratis.",
+  "description": "Genera códigos QR personalizados que duran para siempre. Gratis, sin registro y sin caducidad.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#f6f8ff",
   "theme_color": "#4f6df5",
   "lang": "es",
+  "categories": ["utilities", "productivity", "business"],
   "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-maskable.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "name": "Crear QR de WiFi",
+      "url": "/?template=wifi",
+      "description": "Generar QR para conectar al WiFi sin contraseña"
+    },
+    {
+      "name": "Menú de restaurante",
+      "url": "/?template=menu",
+      "description": "Generar QR para tu menú digital"
     }
   ]
 }

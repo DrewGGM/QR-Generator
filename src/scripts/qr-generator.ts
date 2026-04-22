@@ -574,8 +574,10 @@ $("#copy-data").addEventListener("click", async () => {
 // Print
 $("#print-qr").addEventListener("click", () => window.print());
 
-// Init
-selectTemplate(state.templateId, false);
+// Init: honor ?template=id from manifest shortcuts / share links
+const urlTemplate = new URLSearchParams(location.search).get("template");
+const initialId = urlTemplate && templates.some((t) => t.id === urlTemplate) ? urlTemplate : state.templateId;
+selectTemplate(initialId, true);
 syncStyleControls();
 syncFrameControls();
 $("#size-val").textContent = `${state.size}px`;

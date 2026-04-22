@@ -37,7 +37,7 @@ export interface FramePreset {
 export interface QRTemplate {
   id: string;
   name: string;
-  emoji: string;
+  icon: string;
   description: string;
   fields: TemplateField[];
   encode: (data: Record<string, string>) => string;
@@ -58,9 +58,9 @@ const defaultPreset: StylePreset = {
 export const templates: QRTemplate[] = [
   {
     id: "url",
-    name: "URL / Web",
-    emoji: "🔗",
-    description: "Enlace directo a una página web",
+    name: "Enlace web",
+    icon: "link",
+    description: "Llevar a cualquier página de internet",
     fields: [
       { key: "url", label: "URL", type: "url", placeholder: "https://tu-sitio.com", required: true },
     ],
@@ -70,10 +70,10 @@ export const templates: QRTemplate[] = [
   {
     id: "menu",
     name: "Menú restaurante",
-    emoji: "🍽️",
-    description: "QR para menú digital (PDF, web o Google Drive)",
+    icon: "utensils",
+    description: "Para mostrar tu carta digital en mesas",
     fields: [
-      { key: "url", label: "URL del menú", type: "url", placeholder: "https://drive.google.com/...", required: true, help: "Sube tu menú a Google Drive, GitHub o tu web y pega el enlace." },
+      { key: "url", label: "Enlace al menú", type: "url", placeholder: "https://...", required: true, help: "Pega aquí el enlace de tu carta (PDF, página web o Google Drive)." },
     ],
     encode: (d) => d.url || "",
     preset: {
@@ -91,8 +91,8 @@ export const templates: QRTemplate[] = [
   {
     id: "wifi",
     name: "WiFi",
-    emoji: "📶",
-    description: "Conectar al WiFi sin escribir la contraseña",
+    icon: "wifi",
+    description: "Conectarse al WiFi sin escribir la contraseña",
     fields: [
       { key: "ssid", label: "Nombre de la red (SSID)", type: "text", placeholder: "Mi-WiFi", required: true },
       { key: "password", label: "Contraseña", type: "password", placeholder: "••••••••" },
@@ -131,9 +131,9 @@ export const templates: QRTemplate[] = [
   },
   {
     id: "vcard",
-    name: "Contacto (vCard)",
-    emoji: "👤",
-    description: "Tarjeta de contacto profesional",
+    name: "Tarjeta de contacto",
+    icon: "user",
+    description: "Guardar tus datos en la agenda con un escaneo",
     fields: [
       { key: "firstName", label: "Nombre", type: "text", placeholder: "Juan", required: true },
       { key: "lastName", label: "Apellido", type: "text", placeholder: "Pérez" },
@@ -173,8 +173,8 @@ export const templates: QRTemplate[] = [
   {
     id: "social",
     name: "Redes sociales",
-    emoji: "📱",
-    description: "Instagram, TikTok, WhatsApp, etc.",
+    icon: "share",
+    description: "Instagram, TikTok, WhatsApp, YouTube y más",
     fields: [
       {
         key: "network", label: "Red social", type: "select", required: true,
@@ -217,9 +217,9 @@ export const templates: QRTemplate[] = [
   },
   {
     id: "maps",
-    name: "Google Maps",
-    emoji: "📍",
-    description: "Ubicación de tu negocio",
+    name: "Ubicación",
+    icon: "map-pin",
+    description: "Llevar a tu local en el mapa",
     fields: [
       { key: "query", label: "Dirección o nombre del lugar", type: "text", placeholder: "Plaza Mayor, Madrid", required: true },
     ],
@@ -237,9 +237,9 @@ export const templates: QRTemplate[] = [
   },
   {
     id: "payment",
-    name: "Pago / Propina",
-    emoji: "💳",
-    description: "PayPal, Bizum, Yape, Plin",
+    name: "Cobrar / Propina",
+    icon: "credit-card",
+    description: "PayPal, Bizum, Yape o Plin",
     fields: [
       {
         key: "service", label: "Servicio", type: "select", required: true,
@@ -280,8 +280,8 @@ export const templates: QRTemplate[] = [
   {
     id: "email",
     name: "Email / SMS / Llamada",
-    emoji: "✉️",
-    description: "Acción directa al escanear",
+    icon: "mail",
+    description: "Enviar un mensaje o llamar al instante",
     fields: [
       {
         key: "action", label: "Acción", type: "select", required: true,
@@ -322,9 +322,9 @@ export const templates: QRTemplate[] = [
   },
   {
     id: "event",
-    name: "Evento / Calendario",
-    emoji: "📅",
-    description: "Añadir evento al calendario",
+    name: "Evento",
+    icon: "calendar",
+    description: "Que se añada a tu calendario al escanear",
     fields: [
       { key: "title", label: "Título", type: "text", placeholder: "Reunión importante", required: true },
       { key: "location", label: "Ubicación", type: "text", placeholder: "Calle..." },
@@ -359,9 +359,9 @@ export const templates: QRTemplate[] = [
   },
   {
     id: "text",
-    name: "Texto plano",
-    emoji: "📝",
-    description: "Cualquier texto que quieras codificar",
+    name: "Texto",
+    icon: "file-text",
+    description: "Mostrar cualquier mensaje o nota",
     fields: [
       { key: "text", label: "Texto", type: "textarea", placeholder: "Escribe lo que quieras...", required: true },
     ],
