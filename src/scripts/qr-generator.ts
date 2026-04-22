@@ -4,7 +4,6 @@ import QRCodeStyling, {
   type CornerSquareType,
   type CornerDotType,
   type ErrorCorrectionLevel,
-  type FileExtension,
   type ExtensionFunction,
 } from "qr-code-styling";
 import { templates, colorPalettes, type StylePreset } from "../data/templates";
@@ -130,17 +129,35 @@ const frameExtension: ExtensionFunction = (svg, options) => {
   svg.setAttribute("height", String(totalH));
   svg.setAttribute("viewBox", `0 0 ${totalW} ${totalH}`);
 
-  // Outer background (matches QR background so the frame area looks unified)
+  // Clip path so the label background respects the rounded outer corners
+  const clipId = "qr-frame-clip";
+  const defs = document.createElementNS(SVG_NS, "defs");
+  const clipPath = document.createElementNS(SVG_NS, "clipPath");
+  clipPath.setAttribute("id", clipId);
+  const clipRect = document.createElementNS(SVG_NS, "rect");
+  clipRect.setAttribute("x", "0");
+  clipRect.setAttribute("y", "0");
+  clipRect.setAttribute("width", String(totalW));
+  clipRect.setAttribute("height", String(totalH));
+  clipRect.setAttribute("rx", String(cornerRadius));
+  clipPath.appendChild(clipRect);
+  defs.appendChild(clipPath);
+  svg.appendChild(defs);
+
+  // Group everything under the clip so nothing escapes the rounded corners
+  const clipped = document.createElementNS(SVG_NS, "g");
+  clipped.setAttribute("clip-path", `url(#${clipId})`);
+
+  // Outer background
   const outerBg = document.createElementNS(SVG_NS, "rect");
   outerBg.setAttribute("x", "0");
   outerBg.setAttribute("y", "0");
   outerBg.setAttribute("width", String(totalW));
   outerBg.setAttribute("height", String(totalH));
   outerBg.setAttribute("fill", state.style.backgroundColor);
-  outerBg.setAttribute("rx", String(cornerRadius));
-  svg.appendChild(outerBg);
+  clipped.appendChild(outerBg);
 
-  svg.appendChild(inner);
+  clipped.appendChild(inner);
 
   // Label background (colored bar)
   if (hasLabel) {
@@ -163,22 +180,21 @@ const frameExtension: ExtensionFunction = (svg, options) => {
       labelBg.setAttribute("height", String(pillH));
       labelBg.setAttribute("rx", String(pillH / 2));
     }
-    svg.appendChild(labelBg);
+    clipped.appendChild(labelBg);
 
-    const text = document.createElementNS(SVG_NS, "text");
-    text.setAttribute("x", String(totalW / 2));
-    text.setAttribute("y", String(labelY + labelHeight / 2));
-    text.setAttribute("text-anchor", "middle");
-    text.setAttribute("dominant-baseline", "central");
-    text.setAttribute("fill", frame.textColor);
-    text.setAttribute("font-family", "Inter, system-ui, -apple-system, sans-serif");
-    text.setAttribute("font-size", String(Math.max(18, Math.round(w * 0.085))));
-    text.setAttribute("font-weight", "800");
-    text.setAttribute("letter-spacing", "2");
-    text.textContent = frame.text.trim().toUpperCase();
-    svg.appendChild(text);
+    const textEl = document.createElementNS(SVG_NS, "text");
+    textEl.setAttribute("x", String(totalW / 2));
+    textEl.setAttribute("y", String(labelY + labelHeight / 2));
+    textEl.setAttribute("text-anchor", "middle");
+    textEl.setAttribute("dominant-baseline", "central");
+    textEl.setAttribute("fill", frame.textColor);
+    textEl.setAttribute("font-family", "Inter, system-ui, -apple-system, sans-serif");
+    textEl.setAttribute("font-size", String(Math.max(18, Math.round(w * 0.085))));
+    textEl.setAttribute("font-weight", "800");
+    textEl.setAttribute("letter-spacing", "2");
+    textEl.textContent = frame.text.trim().toUpperCase();
+    clipped.appendChild(textEl);
 
-    // Decorative scan arrows for "scan" style
     if (frame.style === "scan") {
       const arrow = document.createElementNS(SVG_NS, "path");
       const ax = totalW / 2;
@@ -189,11 +205,13 @@ const frameExtension: ExtensionFunction = (svg, options) => {
       arrow.setAttribute("fill", "none");
       arrow.setAttribute("stroke-linecap", "round");
       arrow.setAttribute("stroke-linejoin", "round");
-      svg.appendChild(arrow);
+      clipped.appendChild(arrow);
     }
   }
 
-  // Outer border on top
+  svg.appendChild(clipped);
+
+  // Outer border on top (NOT inside clip, so it draws cleanly)
   if (borderWidth > 0) {
     const border = document.createElementNS(SVG_NS, "rect");
     const off = borderWidth / 2;
@@ -450,14 +468,97 @@ colorPalettes.forEach((p) => {
   palettesEl.appendChild(btn);
 });
 
-// Downloads
-function download(ext: FileExtension) {
-  qrCode.download({ name: `qr-${state.templateId}-${Date.now()}`, extension: ext });
+// === DOWNLOADS (read from the DOM SVG so frames are always included) ===
+function getCurrentSvg(): SVGSVGElement | null {
+  return qrContainer.querySelector("svg");
 }
-$("#download-svg").addEventListener("click", () => download("svg"));
-$("#download-png").addEventListener("click", () => download("png"));
-$("#download-jpeg").addEventListener("click", () => download("jpeg"));
-$("#download-webp").addEventListener("click", () => download("webp"));
+
+function triggerDownload(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function serializeSvg(svg: SVGSVGElement): string {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  if (!clone.getAttribute("xmlns")) clone.setAttribute("xmlns", SVG_NS);
+  if (!clone.getAttribute("xmlns:xlink")) clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+  return new XMLSerializer().serializeToString(clone);
+}
+
+function fileName(ext: string) {
+  return `qr-${state.templateId}-${Date.now()}.${ext}`;
+}
+
+async function downloadSvg() {
+  const svg = getCurrentSvg();
+  if (!svg) return;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n${serializeSvg(svg)}`;
+  triggerDownload(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }), fileName("svg"));
+}
+
+async function downloadRaster(format: "png" | "jpeg" | "webp") {
+  const svg = getCurrentSvg();
+  if (!svg) return;
+
+  const vbW = svg.viewBox.baseVal.width || +(svg.getAttribute("width") || "300");
+  const vbH = svg.viewBox.baseVal.height || +(svg.getAttribute("height") || "300");
+
+  // Render at 3x for crisp print quality
+  const scale = 3;
+  const xml = serializeSvg(svg);
+  const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+  const svgUrl = URL.createObjectURL(svgBlob);
+
+  try {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("Failed to load SVG image"));
+      img.src = svgUrl;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(vbW * scale);
+    canvas.height = Math.round(vbH * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("No 2D canvas context");
+
+    if (format !== "png") {
+      ctx.fillStyle = state.style.backgroundColor || "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const mime = format === "png" ? "image/png" : format === "jpeg" ? "image/jpeg" : "image/webp";
+    const quality = format === "png" ? undefined : 0.95;
+
+    await new Promise<void>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject(new Error("toBlob returned null"));
+          triggerDownload(blob, fileName(format));
+          resolve();
+        },
+        mime,
+        quality,
+      );
+    });
+  } finally {
+    URL.revokeObjectURL(svgUrl);
+  }
+}
+
+$("#download-svg").addEventListener("click", () => void downloadSvg());
+$("#download-png").addEventListener("click", () => void downloadRaster("png"));
+$("#download-jpeg").addEventListener("click", () => void downloadRaster("jpeg"));
+$("#download-webp").addEventListener("click", () => void downloadRaster("webp"));
 
 // Copy data string
 $("#copy-data").addEventListener("click", async () => {
