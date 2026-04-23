@@ -60,6 +60,22 @@ body {
   @apply ring-2 ring-brand-500 ring-offset-2;
 }
 
+.history-card {
+  @apply relative flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-2.5 text-left transition-all cursor-pointer hover:border-brand-500 hover:shadow-md hover:-translate-y-0.5;
+}
+.history-card .history-thumb {
+  @apply flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-50 p-1.5 overflow-hidden;
+}
+.history-card .history-thumb svg {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  display: block;
+}
+.history-card .history-delete {
+  @apply absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white text-slate-400 opacity-0 shadow ring-1 ring-slate-200 transition-opacity hover:text-rose-600 group-hover:opacity-100 focus:opacity-100;
+}
+
 /* QR preview: render at internal resolution but always fit container */
 #qr-preview {
   width: 100%;

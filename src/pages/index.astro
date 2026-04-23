@@ -33,6 +33,25 @@ import { templates } from "../data/templates";
     <div id="qr-app" class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
       <!-- LEFT: CONFIG -->
       <section class="order-2 space-y-6 min-w-0 lg:order-1">
+        <!-- RECENT QRs (hidden until there's history) -->
+        <div id="history-section" class="card p-4 sm:p-5 hidden">
+          <div class="mb-3 flex items-center justify-between gap-2">
+            <h2 class="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-700">
+              <Icon name="history" size={16} class="text-brand-600" />
+              Tus QR recientes
+            </h2>
+            <button type="button" id="history-clear" class="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-rose-600 transition-colors">
+              <Icon name="trash-2" size={12} />
+              Borrar todo
+            </button>
+          </div>
+          <div id="history-list" class="grid gap-2 grid-cols-1 sm:grid-cols-2"></div>
+          <p class="mt-3 flex items-start gap-1.5 text-xs text-slate-500">
+            <Icon name="info" size={14} class="mt-0.5 shrink-0" />
+            Se guardan en tu navegador al descargar. Toca uno para volver a abrirlo.
+          </p>
+        </div>
+
         <!-- TEMPLATES -->
         <div class="card p-4 sm:p-5">
           <div class="mb-4 flex items-center gap-2">

@@ -38,6 +38,14 @@ const $$ = <T extends HTMLElement = HTMLElement>(sel: string) => Array.from(root
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+const DEFAULT_FRAME: FrameState = {
+  style: "none",
+  text: "",
+  textColor: "#ffffff",
+  bgColor: "#1a2570",
+  borderColor: "#1a2570",
+};
+
 const initialTemplate = templates[0];
 const state: State = {
   templateId: initialTemplate.id,
@@ -48,10 +56,174 @@ const state: State = {
   logo: null,
   logoSize: 0.32,
   hideBackgroundDots: true,
-  frame: initialTemplate.framePreset
-    ? { ...initialTemplate.framePreset }
-    : { style: "none", text: "", textColor: "#ffffff", bgColor: "#1a2570", borderColor: "#1a2570" },
+  frame: initialTemplate.framePreset ? { ...initialTemplate.framePreset } : { ...DEFAULT_FRAME },
 };
+
+// ============================================================================
+// HISTORY + DRAFT STORAGE (localStorage)
+// ============================================================================
+const HISTORY_KEY = "qr_history_v1";
+const DRAFT_KEY = "qr_draft_v1";
+const MAX_HISTORY = 8;
+
+interface SerializableState {
+  templateId: string;
+  data: Record<string, string>;
+  style: StylePreset;
+  frame: FrameState;
+  size: number;
+  margin: number;
+  logoSize: number;
+  hideBackgroundDots: boolean;
+}
+
+interface HistoryEntry extends SerializableState {
+  id: string;
+  createdAt: number;
+  thumbnail: string;
+  label: string;
+}
+
+function snapshotState(): SerializableState {
+  return {
+    templateId: state.templateId,
+    data: { ...state.data },
+    style: { ...state.style },
+    frame: { ...state.frame },
+    size: state.size,
+    margin: state.margin,
+    logoSize: state.logoSize,
+    hideBackgroundDots: state.hideBackgroundDots,
+  };
+}
+
+function readHistory(): HistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeHistory(entries: HistoryEntry[]) {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
+  } catch (err) {
+    // Quota exceeded — trim aggressively and retry once
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, 3)));
+    } catch {
+      console.warn("[QR] Could not save history:", err);
+    }
+  }
+}
+
+function describeEntry(templateId: string, data: Record<string, string>): string {
+  const tpl = templates.find((t) => t.id === templateId);
+  const name = tpl?.name ?? templateId;
+  let detail = "";
+  switch (templateId) {
+    case "url": detail = data.url || ""; break;
+    case "menu": detail = data.url || ""; break;
+    case "wifi": detail = data.ssid || ""; break;
+    case "vcard": detail = [data.firstName, data.lastName].filter(Boolean).join(" "); break;
+    case "social": detail = data.username || ""; break;
+    case "maps": detail = data.query || ""; break;
+    case "payment": detail = data.id || ""; break;
+    case "email": detail = data.target || ""; break;
+    case "event": detail = data.title || ""; break;
+    case "text": detail = data.text || ""; break;
+  }
+  detail = detail.trim();
+  if (!detail) return name;
+  if (detail.length > 40) detail = detail.slice(0, 37) + "…";
+  return `${name} · ${detail}`;
+}
+
+function captureThumbnail(): string {
+  const svg = qrContainer?.querySelector("svg");
+  if (!svg) return "";
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute("xmlns", SVG_NS);
+  clone.removeAttribute("width");
+  clone.removeAttribute("height");
+  return new XMLSerializer().serializeToString(clone);
+}
+
+function timeAgo(ts: number): string {
+  const diff = Date.now() - ts;
+  const m = Math.round(diff / 60000);
+  if (m < 1) return "ahora";
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  if (d < 30) return `hace ${d} d`;
+  return new Date(ts).toLocaleDateString();
+}
+
+function saveToHistory() {
+  const thumbnail = captureThumbnail();
+  if (!thumbnail) return;
+  const entry: HistoryEntry = {
+    ...snapshotState(),
+    id: `h_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    createdAt: Date.now(),
+    thumbnail,
+    label: describeEntry(state.templateId, state.data),
+  };
+  const existing = readHistory();
+  // Dedupe: if the last entry is the same template + data, replace it instead of piling up
+  const last = existing[0];
+  if (
+    last &&
+    last.templateId === entry.templateId &&
+    JSON.stringify(last.data) === JSON.stringify(entry.data)
+  ) {
+    existing.shift();
+  }
+  const next = [entry, ...existing].slice(0, MAX_HISTORY);
+  writeHistory(next);
+  renderHistory();
+}
+
+function deleteHistoryEntry(id: string) {
+  writeHistory(readHistory().filter((e) => e.id !== id));
+  renderHistory();
+}
+
+function clearHistory() {
+  writeHistory([]);
+  renderHistory();
+}
+
+function saveDraft() {
+  try {
+    const draft = { ...snapshotState(), savedAt: Date.now() };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    /* ignore */
+  }
+}
+
+function readDraft(): (SerializableState & { savedAt: number }) | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+let draftTimer: number | undefined;
+function scheduleDraftSave() {
+  if (draftTimer) window.clearTimeout(draftTimer);
+  draftTimer = window.setTimeout(saveDraft, 400);
+}
 
 const qrContainer = $<HTMLDivElement>("#qr-preview");
 
@@ -235,6 +407,7 @@ function render() {
   qrCode.update(buildOptions());
   // Re-apply extension after each update (update rebuilds the SVG)
   qrCode.applyExtension(frameExtension);
+  scheduleDraftSave();
 }
 
 // === FIELDS RENDERING ===
@@ -285,9 +458,10 @@ function selectTemplate(id: string, applyPreset = true) {
   });
   if (applyPreset) {
     state.style = { ...tpl.preset };
-    if (tpl.framePreset) {
-      state.frame = { ...tpl.framePreset };
-    }
+    // Always reset the frame when switching templates: either to the template's
+    // preset, or to a clean default (prevents a previous label like "MENÚ" from
+    // leaking into an unrelated template).
+    state.frame = tpl.framePreset ? { ...tpl.framePreset } : { ...DEFAULT_FRAME };
     syncStyleControls();
     syncFrameControls();
   }
@@ -298,11 +472,47 @@ function selectTemplate(id: string, applyPreset = true) {
   render();
 }
 
+function restoreEntry(entry: SerializableState) {
+  const tpl = templates.find((t) => t.id === entry.templateId);
+  if (!tpl) return;
+  state.templateId = entry.templateId;
+  state.data = { ...entry.data };
+  state.style = { ...entry.style };
+  state.frame = { ...entry.frame };
+  state.size = entry.size;
+  state.margin = entry.margin;
+  state.logoSize = entry.logoSize;
+  state.hideBackgroundDots = entry.hideBackgroundDots;
+  // Logo never persists (privacy + size) — clear it when restoring.
+  state.logo = null;
+  logoInput.value = "";
+  $("#logo-controls").classList.add("hidden");
+
+  $$<HTMLButtonElement>("[data-template]").forEach((b) => {
+    b.classList.toggle("active", b.dataset.template === state.templateId);
+  });
+  renderFields();
+  syncAllControls();
+  render();
+}
+
 $$<HTMLButtonElement>("[data-template]").forEach((b) => {
   b.addEventListener("click", () => selectTemplate(b.dataset.template!));
 });
 
 // === STYLE CONTROLS ===
+function syncAllControls() {
+  syncStyleControls();
+  syncFrameControls();
+  ($("#size") as HTMLInputElement).value = String(state.size);
+  ($("#margin") as HTMLInputElement).value = String(state.margin);
+  ($("#logo-size") as HTMLInputElement).value = String(state.logoSize);
+  ($("#hide-bg-dots") as HTMLInputElement).checked = state.hideBackgroundDots;
+  $("#size-val").textContent = `${state.size}px`;
+  $("#margin-val").textContent = `${state.margin}px`;
+  $("#logo-size-val").textContent = `${Math.round(state.logoSize * 100)}%`;
+}
+
 function syncStyleControls() {
   ($("#dots-type") as HTMLSelectElement).value = state.style.dotsType;
   ($("#corners-square-type") as HTMLSelectElement).value = state.style.cornersSquareType;
@@ -555,10 +765,15 @@ async function downloadRaster(format: "png" | "jpeg" | "webp") {
   }
 }
 
-$("#download-svg").addEventListener("click", () => void downloadSvg());
-$("#download-png").addEventListener("click", () => void downloadRaster("png"));
-$("#download-jpeg").addEventListener("click", () => void downloadRaster("jpeg"));
-$("#download-webp").addEventListener("click", () => void downloadRaster("webp"));
+async function downloadAndSave(action: () => Promise<void>) {
+  await action();
+  saveToHistory();
+}
+
+$("#download-svg").addEventListener("click", () => void downloadAndSave(downloadSvg));
+$("#download-png").addEventListener("click", () => void downloadAndSave(() => downloadRaster("png")));
+$("#download-jpeg").addEventListener("click", () => void downloadAndSave(() => downloadRaster("jpeg")));
+$("#download-webp").addEventListener("click", () => void downloadAndSave(() => downloadRaster("webp")));
 
 // Copy data string
 $("#copy-data").addEventListener("click", async () => {
@@ -574,12 +789,84 @@ $("#copy-data").addEventListener("click", async () => {
 // Print
 $("#print-qr").addEventListener("click", () => window.print());
 
-// Init: honor ?template=id from manifest shortcuts / share links
+// === HISTORY UI ===
+const historySection = $<HTMLDivElement>("#history-section");
+const historyList = $<HTMLDivElement>("#history-list");
+
+function renderHistory() {
+  const entries = readHistory();
+  if (entries.length === 0) {
+    historySection.classList.add("hidden");
+    historyList.innerHTML = "";
+    return;
+  }
+  historySection.classList.remove("hidden");
+  historyList.innerHTML = "";
+  entries.forEach((entry) => {
+    const tpl = templates.find((t) => t.id === entry.templateId);
+    const card = document.createElement("div");
+    card.className = "history-card group";
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-label", `Restaurar ${entry.label}`);
+    card.innerHTML = `
+      <div class="history-thumb">${entry.thumbnail}</div>
+      <div class="min-w-0 flex-1 pr-6">
+        <div class="truncate text-sm font-semibold text-slate-900">${escapeHtml(tpl?.name ?? entry.templateId)}</div>
+        <div class="truncate text-xs text-slate-500">${escapeHtml(describeDetail(entry))}</div>
+        <div class="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">${timeAgo(entry.createdAt)}</div>
+      </div>
+      <button type="button" class="history-delete" aria-label="Borrar" data-delete="${entry.id}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    `;
+
+    card.addEventListener("click", (e) => {
+      const target = e.target as HTMLElement;
+      if (target.closest("[data-delete]")) return;
+      restoreEntry(entry);
+    });
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        restoreEntry(entry);
+      }
+    });
+    const delBtn = card.querySelector<HTMLButtonElement>("[data-delete]");
+    delBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteHistoryEntry(entry.id);
+    });
+    historyList.appendChild(card);
+  });
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+}
+
+function describeDetail(entry: HistoryEntry): string {
+  const parts = entry.label.split(" · ");
+  return parts.length > 1 ? parts.slice(1).join(" · ") : "Sin datos";
+}
+
+$("#history-clear").addEventListener("click", () => {
+  if (readHistory().length === 0) return;
+  if (confirm("¿Borrar todos los QR guardados?")) clearHistory();
+});
+
+// Init: priority order — ?template= param > saved draft > first template
 const urlTemplate = new URLSearchParams(location.search).get("template");
-const initialId = urlTemplate && templates.some((t) => t.id === urlTemplate) ? urlTemplate : state.templateId;
-selectTemplate(initialId, true);
-syncStyleControls();
-syncFrameControls();
-$("#size-val").textContent = `${state.size}px`;
-$("#margin-val").textContent = `${state.margin}px`;
-$("#logo-size-val").textContent = `${Math.round(state.logoSize * 100)}%`;
+const draft = !urlTemplate ? readDraft() : null;
+
+if (urlTemplate && templates.some((t) => t.id === urlTemplate)) {
+  selectTemplate(urlTemplate, true);
+  syncAllControls();
+} else if (draft && templates.some((t) => t.id === draft.templateId)) {
+  restoreEntry(draft);
+} else {
+  selectTemplate(state.templateId, true);
+  syncAllControls();
+}
+
+renderHistory();
